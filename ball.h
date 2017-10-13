@@ -9,9 +9,11 @@ public:
     {
     }
 
-    void addXSpeed(int xSpeed) { m_xSpeed += xSpeed; }
+    void addXSpeed(double xSpeed) { m_xSpeed += xSpeed; }
 
-    void addYSpeed(int ySpeed) { m_ySpeed += ySpeed; }
+    void addYSpeed(double ySpeed) { m_ySpeed += ySpeed; }
+
+    void move();
 
     bool getSelected() { return m_selected; }
 
@@ -48,12 +50,17 @@ public:
         return m_r;
     }
 
+    int getMass()
+    {
+        return m_r;
+    }
+
 private:
     int m_x;
     int m_y;
     int m_r;
-    int m_xSpeed;
-    int m_ySpeed;
+    double m_xSpeed;
+    double m_ySpeed;
     bool m_selected;
 };
 
