@@ -1,20 +1,24 @@
 #include "scene.h"
 
 #include <math.h>
+#include <time.h>
 
 namespace
 {
     static const int initialBallsCount = 10;
     static const int ballRadius = 10;
+    static const int noBall = -1;
 }
 
 Scene::Scene()
-    : m_width(width), m_height(height)
+    : m_width(width), m_height(height), m_selectedBall(noBall)
 {
+    srand(time(nullptr));
+
     for (int i = 0; i < initialBallsCount; i++)
     {
-        int x;
-        int y;
+        int x = qrand() % m_width;
+        int y = qrand() % m_height;
         m_balls.push_back(Ball(x, y, ballRadius));
     }
 }
@@ -25,23 +29,33 @@ void Scene::addBall(int x, int y)
     m_balls.push_back(Ball(x, y, ballRadius));
 }
 
-
 void Scene::removeBall(int x, int y)
 {
     Lock lock;
-    auto it = std::find_if(m_balls.begin(), m_balls.end(),
-                           [x, y] (const Ball& ball)
-                           {
-                               int diffX = ball.getX() - x;
-                               int diffY = ball.getY() - y;
-                               int r = ball.getRadius();
-                               return diffX * diffX + diffY * diffY <= r*r;
-                           });
-
+    auto it = getBallIt(x, y);
     if (it != m_balls.end())
     {
         m_balls.erase(it);
     }
+}
+
+void Scene::selectBall(int x, int y)
+{
+    Lock lock;
+    auto it = getBallIt(x, y);
+    m_selectedBall = it != m_balls.end() ? std::distance(it, m_balls.end()) : noBall;
+}
+
+std::vector<Ball>::iterator Scene::getBallIt(int x, int y)
+{
+    return std::find_if(m_balls.cbegin(), m_balls.cend(),
+                        [x, y] (const Ball& ball)
+                        {
+                            int diffX = ball.getX() - x;
+                            int diffY = ball.getY() - y;
+                            int r = ball.getRadius();
+                            return diffX * diffX + diffY * diffY <= r*r;
+                        });
 }
 
 void Scene::calculate()
