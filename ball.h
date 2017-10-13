@@ -15,7 +15,7 @@ public:
 
     void move();
 
-    bool getSelected() { return m_selected; }
+    bool getSelected() const { return m_selected; }
 
     void setSelected(bool isSelected) { m_selected = isSelected; }
 
@@ -25,7 +25,7 @@ public:
         m_y = newY;
     }
 
-    int getX()
+    int getX() const
     {
         return m_x;
     }
@@ -35,7 +35,7 @@ public:
         m_x = x;
     }
 
-    int getY()
+    int getY() const
     {
         return m_y;
     }
@@ -45,12 +45,12 @@ public:
         m_y = y;
     }
 
-    int getRadius()
+    int getRadius() const
     {
         return m_r;
     }
 
-    int getMass()
+    int getMass() const
     {
         return m_r;
     }
