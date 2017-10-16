@@ -4,17 +4,18 @@
 #include <time.h>
 #include <algorithm>
 #include <iostream>
+#include <thread>
 
 namespace
 {
     static const int initialBallsCount = 10;
     static const int ballRadius = 10;
     static const int noBall = -1;
-    static const int updateTimeoutMS = 1000;
+    static const int updateTimeoutMS = 20;
 }
 
-Scene::Scene(int width, int height, Listener* listener)
-    : m_width(width), m_height(height), m_selectedBall(noBall), m_listener(listener), m_done(false)
+Scene::Scene(int width, int height)
+    : m_width(width), m_height(height), m_selected(noBall)
 {
     srand(static_cast<unsigned int>(time(nullptr)));
 
@@ -24,38 +25,15 @@ Scene::Scene(int width, int height, Listener* listener)
         int y = rand() % m_height;
         m_balls.push_back(Ball(x, y, ballRadius));
     }
-
-    std::thread thread([this]()
-                       {
-                           std::cout << "Update thread started!" << std::endl;
-                           while (!m_done)
-                           {
-                               calculate();
-                               if (m_listener != nullptr)
-                               {
-                                   m_listener->notify();
-                               }
-                               std::this_thread::sleep_for(std::chrono::milliseconds(updateTimeoutMS));
-                           }
-                           std::cout << "Update thread stopped!" << std::endl;
-                       });
-
-    m_updateThread.swap(thread);
 }
 
-Scene::~Scene()
-{
-    m_done = true;
-    m_updateThread.join();
-}
-
-void Scene::addBall(int x, int y)
+void Scene::add(int x, int y)
 {
     Lock lock(m_mutex);
     m_balls.push_back(Ball(x, y, ballRadius));
 }
 
-void Scene::removeBall(int x, int y)
+void Scene::remove(int x, int y)
 {
     Lock lock(m_mutex);
     auto it = getBallIt(x, y);
@@ -65,16 +43,32 @@ void Scene::removeBall(int x, int y)
     }
 }
 
-void Scene::selectBall(int x, int y)
+Ball* Scene::select(int x, int y)
 {
+    std::cout << "+++Select" << std::endl;
     Lock lock(m_mutex);
     auto it = getBallIt(x, y);
-    m_selectedBall = it != m_balls.end() ? std::distance(m_balls.begin(), it) : noBall;
+    m_selected = it != m_balls.end() ? std::distance(m_balls.begin(), it) : noBall;
+    std::cout << "---Select" << std::endl;
+    return m_selected != noBall ? &m_balls[m_selected] : nullptr;
 }
 
-bool Scene::hasSelection()
+Ball* Scene::getSelected()
 {
-    return m_selectedBall != noBall;
+    Lock lock(m_mutex);
+    return m_selected != noBall ? &m_balls[m_selected] : nullptr;
+}
+
+void Scene::moveSelected(int dx, int dy)
+{
+    Lock lock(m_mutex);
+    Ball *ball = m_selected != noBall ? &m_balls[m_selected] : nullptr;
+    if (ball != nullptr)
+    {
+        int x = ball->getX();
+        int y = ball->getY();
+        ball->setCenter(x + dx, y + dy);
+    }
 }
 
 std::vector<Ball>::iterator Scene::getBallIt(int x, int y)
@@ -91,34 +85,47 @@ std::vector<Ball>::iterator Scene::getBallIt(int x, int y)
 
 void Scene::calculate()
 {
-    Lock lock(m_mutex);
-    for (Ball& ball1 : m_balls)
+    std::thread calculateThread([this]()
     {
-        for (const Ball& ball2 : m_balls)
+        Lock lock(m_mutex);
+        for (Ball& ball1 : m_balls)
         {
-            if (&ball1 != &ball2)
+            if (ball1.isLocked())
             {
-                int dx = ball2.getX() - ball1.getX();
-                int dy = ball2.getY() - ball1.getY();
-                double c = sqrt(dx * dx + dy * dy);
-                double r = c - ball1.getRadius() - ball2.getRadius();
-                double cos = dy / c;
-                double sin = dx /c;
-                double f = 1 / r - 1 / (r * r);
-                f *= 100;
-                // F = m * a;
-                double ax = f * cos / ball1.getRadius(); // acceleration X
-                double ay = f * sin / ball1.getRadius();  // acceleration Y
-                ball1.addXSpeed(ax);
-                ball1.addYSpeed(ay);
-                std::cout << "F=" << f << " r=" << r << std::endl;
-                std::cout << "ax=" << ax << " ay=" << ay << std::endl;
+                continue;
+            }
+            for (const Ball& ball2 : m_balls)
+            {
+                if (ball2.isLocked())
+                {
+                    continue;
+                }
+                if (&ball1 != &ball2)
+                {
+                    int dx = ball2.getX() - ball1.getX();
+                    int dy = ball2.getY() - ball1.getY();
+                    double c = sqrt(dx * dx + dy * dy);
+                    double r = c - ball1.getRadius() - ball2.getRadius();
+                    double f = 1 / r - 1 / (r * r);
+                    // F = m * a;
+                    double a = f / ball1.getRadius();
+                    double cos = dy / c;
+                    double sin = dx / c;
+                    double ax = a * cos;
+                    double ay = a * sin;
+                    ball1.addXAcceleration(ax);
+                    ball1.addYAcceleration(ay);
+                    std::cout << "F=" << f << " r=" << r << std::endl;
+                    std::cout << "ax=" << ax << " ay=" << ay << std::endl;
+                }
             }
         }
-    }
 
-    for (Ball& ball : m_balls)
-    {
-        ball.move();
-    }
+        for (Ball& ball : m_balls)
+        {
+            ball.move();
+        }
+    });
+
+    calculateThread.detach();
 }

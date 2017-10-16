@@ -5,6 +5,9 @@
 
 #include <QMainWindow>
 #include <QPainter>
+#include <QTimer>
+#include <QMouseEvent>
+#include <QPoint>
 
 #include <memory>
 
@@ -12,7 +15,7 @@ namespace Ui {
 class MainWindow;
 }
 
-class MainWindow : public QMainWindow, public Scene::Listener
+class MainWindow : public QMainWindow
 {
     Q_OBJECT
 
@@ -20,14 +23,19 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
 
-    virtual void notify();
-
 protected:
     void paintEvent(QPaintEvent *event);
+    void mousePressEvent(QMouseEvent* event);
+    void mouseMoveEvent(QMouseEvent* event);
+    void mouseReleaseEvent(QMouseEvent* event);
+
 
 private:
     Ui::MainWindow *ui;
     std::unique_ptr<Scene> m_scene;
+    QTimer* m_timer;
+    bool m_drag;
+    QPoint m_dragPos;
 };
 
 #endif // MAINWINDOW_H

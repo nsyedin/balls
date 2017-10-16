@@ -5,19 +5,19 @@ class Ball
 {
 public:
     explicit Ball(int x, int y, int r) :
-        m_x(x), m_y(y), m_r(r), m_xSpeed(0), m_ySpeed(0), m_selected(false)
+        m_x(x), m_y(y), m_r(r), m_xSpeed(0), m_ySpeed(0), m_isLocked(false)
     {
     }
 
-    void addXSpeed(double xSpeed) { m_xSpeed += xSpeed; }
+    void addXAcceleration(double xAcceleration) { m_xSpeed += xAcceleration; }
 
-    void addYSpeed(double ySpeed) { m_ySpeed += ySpeed; }
+    void addYAcceleration(double yAcceleration) { m_ySpeed += yAcceleration; }
 
     void move();
 
-    bool getSelected() const { return m_selected; }
-
-    void setSelected(bool isSelected) { m_selected = isSelected; }
+    void lock() { m_isLocked = true; }
+    void unlock() { m_isLocked = false; }
+    bool isLocked() const { return m_isLocked; }
 
     void setCenter(int newX, int newY)
     {
@@ -61,7 +61,7 @@ private:
     int m_r;
     double m_xSpeed;
     double m_ySpeed;
-    bool m_selected;
+    bool m_isLocked;
 };
 
 #endif // BALL_H
