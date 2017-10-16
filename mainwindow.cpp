@@ -6,6 +6,7 @@
 namespace
 {
     const int initialBallsCount = 10;
+    const int repaintTimeoutMS = 20;
 }
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -19,7 +20,7 @@ MainWindow::MainWindow(QWidget *parent) :
     m_scene.reset(new Scene(width(), height(), m_ballsCount));
     m_timer = new QTimer(this);
     connect(m_timer, SIGNAL(timeout()), this, SLOT(repaint()));
-    m_timer->start(20);
+    m_timer->start(repaintTimeoutMS);
     updateCaption();
 }
 
@@ -77,9 +78,11 @@ void MainWindow::mouseReleaseEvent(QMouseEvent* event)
 
 void MainWindow::mouseDoubleClickEvent(QMouseEvent* event)
 {
-    m_scene->remove(event->x(), event->y());
-    m_ballsCount--;
-    updateCaption();
+    if (m_scene->remove(event->x(), event->y()))
+    {
+        m_ballsCount--;
+        updateCaption();
+    }
 }
 
 void MainWindow::paintEvent(QPaintEvent *event)

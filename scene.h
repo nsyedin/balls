@@ -15,7 +15,7 @@ public:
     ~Scene();
 
     void add(int x, int y);
-    void remove(int x, int y);
+    bool remove(int x, int y);
     Ball* select(int x, int y);
     Ball* getSelected();
     void moveSelected(int dx, int dy);
@@ -35,6 +35,7 @@ private:
 
     void calculate();
     std::vector<Ball>::iterator getBallIt(int x, int y);
+    Ball* getBall();
 
     std::vector<Ball> m_balls;
     int m_selected;

@@ -10,7 +10,6 @@ namespace
 {
     static const int ballRadius = 10;
     static const int noBall = -1;
-    static const int updateTimeoutMS = 20;
 }
 
 Scene::Scene(int width, int height, int ballsCount)
@@ -42,36 +41,37 @@ void Scene::add(int x, int y)
     m_balls.push_back(Ball(x, y, ballRadius));
 }
 
-void Scene::remove(int x, int y)
+bool Scene::remove(int x, int y)
 {
     Lock lock(m_mutex);
     auto it = getBallIt(x, y);
     if (it != m_balls.end())
     {
         m_balls.erase(it);
+        return true;
     }
+
+    return false;
 }
 
 Ball* Scene::select(int x, int y)
 {
-    std::cout << "+++Select" << std::endl;
     Lock lock(m_mutex);
     auto it = getBallIt(x, y);
     m_selected = it != m_balls.end() ? std::distance(m_balls.begin(), it) : noBall;
-    std::cout << "---Select" << std::endl;
-    return m_selected != noBall ? &m_balls[m_selected] : nullptr;
+    return getBall();
 }
 
 Ball* Scene::getSelected()
 {
     Lock lock(m_mutex);
-    return m_selected != noBall ? &m_balls[m_selected] : nullptr;
+    return getBall();
 }
 
 void Scene::moveSelected(int dx, int dy)
 {
     Lock lock(m_mutex);
-    Ball *ball = m_selected != noBall ? &m_balls[m_selected] : nullptr;
+    Ball *ball = getBall();
     if (ball != nullptr)
     {
         int x = ball->getX();
@@ -92,6 +92,11 @@ std::vector<Ball>::iterator Scene::getBallIt(int x, int y)
                         });
 }
 
+Ball* Scene::getBall()
+{
+    return m_selected != noBall ? &m_balls[m_selected] : nullptr;
+}
+
 void Scene::update()
 {
     m_isNotified = true;
@@ -108,6 +113,8 @@ void Scene::calculate()
             m_condVar.wait(lock);
         }
         m_isNotified = false;
+
+        auto start = std::chrono::system_clock::now();
         for (Ball& ball1 : m_balls)
         {
             if (ball1.isLocked())
@@ -136,8 +143,8 @@ void Scene::calculate()
                         double ay = a * sin;
                         ball1.addXAcceleration(ax);
                         ball1.addYAcceleration(ay);
-                        std::cout << "F=" << f << " r=" << r << std::endl;
-                        std::cout << "ax=" << ax << " ay=" << ay << std::endl;
+                        //std::cout << "F=" << f << " r=" << r << std::endl;
+                        //std::cout << "ax=" << ax << " ay=" << ay << std::endl;
                     }
                 }
             }
@@ -147,5 +154,8 @@ void Scene::calculate()
         {
             ball.move();
         }
+
+        auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - start);
+        std::cout << "Calc=" << diff.count() << "ms" << std::endl;
     }
 }
