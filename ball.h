@@ -15,8 +15,8 @@ public:
 
     void move();
 
-    void lock() { m_isLocked = true; }
-    void unlock() { m_isLocked = false; }
+    void lock();
+    void unlock();
     bool isLocked() const { return m_isLocked; }
 
     void setCenter(int newX, int newY)

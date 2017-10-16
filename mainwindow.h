@@ -28,12 +28,15 @@ protected:
     void mousePressEvent(QMouseEvent* event);
     void mouseMoveEvent(QMouseEvent* event);
     void mouseReleaseEvent(QMouseEvent* event);
-
+    void mouseDoubleClickEvent(QMouseEvent* event);
 
 private:
+    void updateCaption();
+
     Ui::MainWindow *ui;
     std::unique_ptr<Scene> m_scene;
     QTimer* m_timer;
+    int m_ballsCount;
     bool m_drag;
     QPoint m_dragPos;
 };

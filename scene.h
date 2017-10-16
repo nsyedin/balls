@@ -6,12 +6,13 @@
 #include <vector>
 #include <mutex>
 #include <thread>
+#include <condition_variable>
 
 class Scene
 {
 public:
-    explicit Scene(int width, int height);
-    ~Scene() = default;
+    explicit Scene(int width, int height, int ballsCount);
+    ~Scene();
 
     void add(int x, int y);
     void remove(int x, int y);
@@ -27,11 +28,12 @@ public:
         return m_balls;
     }
 
-    void calculate();
+    void update();
 
 private:
     typedef std::lock_guard<std::mutex> Lock;
 
+    void calculate();
     std::vector<Ball>::iterator getBallIt(int x, int y);
 
     std::vector<Ball> m_balls;
@@ -41,6 +43,10 @@ private:
     int m_height;
 
     std::mutex m_mutex;
+    std::thread m_updateThread;
+    std::condition_variable m_condVar;
+    bool m_done;
+    bool m_isNotified;
 };
 
 #endif // SCENE_H

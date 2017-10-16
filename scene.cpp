@@ -8,23 +8,32 @@
 
 namespace
 {
-    static const int initialBallsCount = 10;
     static const int ballRadius = 10;
     static const int noBall = -1;
     static const int updateTimeoutMS = 20;
 }
 
-Scene::Scene(int width, int height)
-    : m_width(width), m_height(height), m_selected(noBall)
+Scene::Scene(int width, int height, int ballsCount)
+    : m_width(width), m_height(height), m_selected(noBall), m_done(false)
 {
     srand(static_cast<unsigned int>(time(nullptr)));
 
-    for (int i = 0; i < initialBallsCount; i++)
+    for (int i = 0; i < ballsCount; i++)
     {
         int x = rand() % m_width;
         int y = rand() % m_height;
         m_balls.push_back(Ball(x, y, ballRadius));
     }
+
+    std::thread tmp(&Scene::calculate, this);
+    m_updateThread.swap(tmp);
+}
+
+Scene::~Scene()
+{
+    m_done = true;
+    update();
+    m_updateThread.join();
 }
 
 void Scene::add(int x, int y)
@@ -83,11 +92,22 @@ std::vector<Ball>::iterator Scene::getBallIt(int x, int y)
                         });
 }
 
+void Scene::update()
+{
+    m_isNotified = true;
+    m_condVar.notify_one();
+}
+
 void Scene::calculate()
 {
-    std::thread calculateThread([this]()
+    std::unique_lock<std::mutex> lock(m_mutex);
+    while (!m_done)
     {
-        Lock lock(m_mutex);
+        while (!m_isNotified)
+        {
+            m_condVar.wait(lock);
+        }
+        m_isNotified = false;
         for (Ball& ball1 : m_balls)
         {
             if (ball1.isLocked())
@@ -107,16 +127,18 @@ void Scene::calculate()
                     double c = sqrt(dx * dx + dy * dy);
                     double r = c - ball1.getRadius() - ball2.getRadius();
                     double f = 1 / r - 1 / (r * r);
-                    // F = m * a;
-                    double a = f / ball1.getRadius();
-                    double cos = dy / c;
-                    double sin = dx / c;
-                    double ax = a * cos;
-                    double ay = a * sin;
-                    ball1.addXAcceleration(ax);
-                    ball1.addYAcceleration(ay);
-                    std::cout << "F=" << f << " r=" << r << std::endl;
-                    std::cout << "ax=" << ax << " ay=" << ay << std::endl;
+                    if (f > 0.000001) // greater 0
+                    {
+                        double a = f / ball1.getRadius();
+                        double cos = dy / c;
+                        double sin = dx / c;
+                        double ax = a * cos;
+                        double ay = a * sin;
+                        ball1.addXAcceleration(ax);
+                        ball1.addYAcceleration(ay);
+                        std::cout << "F=" << f << " r=" << r << std::endl;
+                        std::cout << "ax=" << ax << " ay=" << ay << std::endl;
+                    }
                 }
             }
         }
@@ -125,7 +147,5 @@ void Scene::calculate()
         {
             ball.move();
         }
-    });
-
-    calculateThread.detach();
+    }
 }

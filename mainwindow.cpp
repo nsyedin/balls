@@ -3,17 +3,24 @@
 
 #include <iostream>
 
+namespace
+{
+    const int initialBallsCount = 10;
+}
+
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow),
+    m_ballsCount(initialBallsCount),
     m_drag(false)
 {
     ui->setupUi(this);
     setFixedSize(width(), height());
-    m_scene.reset(new Scene(width(), height()));
+    m_scene.reset(new Scene(width(), height(), m_ballsCount));
     m_timer = new QTimer(this);
     connect(m_timer, SIGNAL(timeout()), this, SLOT(repaint()));
     m_timer->start(20);
+    updateCaption();
 }
 
 MainWindow::~MainWindow()
@@ -22,11 +29,18 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
+void MainWindow::updateCaption()
+{
+    setWindowTitle(QString("Balls ") + QString::number(m_ballsCount));
+}
+
 void MainWindow::mousePressEvent(QMouseEvent* event)
 {
     if (event->button() == Qt::MouseButton::RightButton)
     {
         m_scene->add(event->x(), event->y());
+        m_ballsCount++;
+        updateCaption();
     }
     else if (event->button() == Qt::MouseButton::LeftButton &&
              m_scene->select(event->x(), event->y()) != nullptr)
@@ -61,6 +75,13 @@ void MainWindow::mouseReleaseEvent(QMouseEvent* event)
     }
 }
 
+void MainWindow::mouseDoubleClickEvent(QMouseEvent* event)
+{
+    m_scene->remove(event->x(), event->y());
+    m_ballsCount--;
+    updateCaption();
+}
+
 void MainWindow::paintEvent(QPaintEvent *event)
 {
     (void*) event;
@@ -81,7 +102,7 @@ void MainWindow::paintEvent(QPaintEvent *event)
     }
     m_scene->unlock();
 
-    m_scene->calculate();
+    m_scene->update();
 
     painter.end();
 }
